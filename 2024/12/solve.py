@@ -61,9 +61,94 @@ def perimeter(region):
 
 
 # Function that calculates the number of edges of a region
-def edges(region):
-    # TODO: I dont know how to calculate this
-    ...
+# Calculating the number of corners/vertices of a region for each cell based on its connections
+def edges(region, grid):
+    region_corners = 0
+
+    # Debug grid, shows for each cell how many corners it adds to the region
+    # show_grid = [["." for _ in row] for row in grid]
+
+    for cell in region:
+        cx, cy = cell
+        cell_vertices = 0
+
+        # Check if cell is connected to another cell in the region on the sides
+        connected_up         = (cx + 0, cy - 1) in region
+        connected_up_right   = (cx + 1, cy - 1) in region
+        connected_right      = (cx + 1, cy + 0) in region
+        connected_down_right = (cx + 1, cy + 1) in region
+        connected_down       = (cx + 0, cy + 1) in region
+        connected_down_left  = (cx - 1, cy + 1) in region
+        connected_left       = (cx - 1, cy + 0) in region
+        connected_up_left    = (cx - 1, cy - 1) in region
+
+        attached = sum(1 for d in [connected_up, connected_down, connected_left, connected_right] if d)
+        if attached == 0:
+            # This is a non-attached cell, may be isolated single cell region
+            # print(f"non-attached cell at {cx},{cy} -> +4")
+            cell_vertices = 4
+        
+        elif attached == 1:
+            # This cell is single connected cell, so it has 2 corners, even if we dont check diagonals
+            cell_vertices = 2
+            # print(f"1-way connected cell at {cx},{cy} -> +2")
+
+        elif attached == 2:
+            # With 2 connected cells to current one, this can be connected in straight line shape or L shape
+            # When its in line, it adds no corners, but when its L shape, we need to check if cell between corner in region
+            # if it is, then we have 1 corner, otherwise 2 corners (inner one)
+            if connected_up and connected_down or connected_left and connected_right:
+                # print(f"2-way UD or LR connected cell at {cx},{cy} -> +0")
+                cell_vertices = 0
+            else:
+                if connected_up and connected_right:
+                    accum = 1 if connected_up_right else 2
+                elif connected_up and connected_left:
+                    accum = 1 if connected_up_left else 2
+                elif connected_down and connected_right:
+                    accum = 1 if connected_down_right else 2
+                elif connected_down and connected_left:
+                    accum = 1 if connected_down_left else 2
+                # print(f"2-way UD or LR connected cell at {cx},{cy} -> +{accum}")
+                cell_vertices = accum
+
+        elif attached == 3:
+            # With 3 connected cells, we need to check based on which side we are missing connection
+            accum = 0
+            if not connected_up:
+                accum += 0 if connected_down_right else 1
+                accum += 0 if connected_down_left else 1
+            elif not connected_down:
+                accum += 0 if connected_up_right else 1
+                accum += 0 if connected_up_left else 1
+            elif not connected_left:
+                accum += 0 if connected_up_right else 1
+                accum += 0 if connected_down_right else 1
+            elif not connected_right:
+                accum += 0 if connected_up_left else 1
+                accum += 0 if connected_down_left else 1
+            else:
+                print("This should not happen, 3 connected cells but no missing side!", cx, cy, region)
+
+            # print(f"3-way connected cell at {cx},{cy} -> +{accum}")
+            cell_vertices = accum
+
+        elif attached == 4:
+            # This cell has 4 connected cells, but it can be inner corner on any of 4 diagonals
+            accum = sum(1 for d in [connected_up_left, connected_up_right, connected_down_right, connected_down_left] if not d)
+            # print(f"4-way connected cell at {cx},{cy} -> +{accum}")
+            cell_vertices = accum
+        else:
+            print("This should not happen, more than 4 connected cells!", cx, cy, region)
+
+        region_corners += cell_vertices
+        # show_grid[cy][cx] = str(cell_vertices)
+
+    # print("Region corners/vertices:", region)
+    # for row in show_grid:
+    #     print("".join(row))
+
+    return region_corners
 
 
 def solve(file):
@@ -78,8 +163,8 @@ def solve(file):
     total_price = sum(area(r) * perimeter(r) for r in regions)
     print("Part 1:", total_price)
 
-    # total_price2 = sum(len(r) * sides(r) for r in regions)
-    # print("Part 2:", total_price2)
+    total_price2 = sum(area(r) * edges(r, grid) for r in regions)
+    print("Part 2:", total_price2)
 
 
 if __name__ == "__main__":
